@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,14 +56,15 @@ export default function AuthPage() {
   });
 
   // Redirect if already logged in
-  if (user) {
-    if (user.isStaff) {
-      setLocation("/admin");
-    } else {
-      setLocation("/");
+  React.useEffect(() => {
+    if (user) {
+      if (user.isStaff) {
+        setLocation("/admin");
+      } else {
+        setLocation("/");
+      }
     }
-    return null;
-  }
+  }, [user, setLocation]);
 
   const onLoginSubmit = async (data: LoginForm) => {
     try {

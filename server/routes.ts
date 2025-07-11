@@ -135,6 +135,43 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/admin/stats", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
+    
+    try {
+      const users = await storage.getAllUsers();
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+      
+      // Get all active sessions
+      const allActiveSessions = [];
+      for (const user of users) {
+        const activeSession = await storage.getActiveSessionByUserId(user.id);
+        if (activeSession) {
+          allActiveSessions.push(activeSession);
+        }
+      }
+      
+      // Get monthly hours for all users
+      let totalMonthlyHours = 0;
+      for (const user of users) {
+        const sessions = await storage.getSessionsByUserId(user.id, currentMonth);
+        const userHours = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
+        totalMonthlyHours += userHours;
+      }
+      
+      const stats = {
+        totalUsers: users.length,
+        activeSessions: allActiveSessions.length,
+        monthlyHours: Math.round(totalMonthlyHours / 60), // Convert minutes to hours
+        avgHours: users.length > 0 ? Math.round(totalMonthlyHours / 60 / users.length) : 0,
+      };
+      
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get admin stats" });
+    }
+  });
+
   app.get("/api/admin/user/:id/sessions", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
     
@@ -201,16 +238,25 @@ export function registerRoutes(app: Express): Server {
     try {
       const sessionId = parseInt(req.params.id);
       
-      // Get session to find userId for notification
-      const sessions = await storage.getSessionsByUserId(req.user.id);
-      const session = sessions.find(s => s.id === sessionId);
+      // Get session data first to find the user ID
+      const allUsers = await storage.getAllUsers();
+      let sessionToDelete = null;
+      
+      for (const user of allUsers) {
+        const userSessions = await storage.getSessionsByUserId(user.id);
+        const session = userSessions.find(s => s.id === sessionId);
+        if (session) {
+          sessionToDelete = session;
+          break;
+        }
+      }
       
       await storage.deleteSession(sessionId);
       
-      if (session) {
+      if (sessionToDelete) {
         // Create notification
         await storage.createNotification({
-          userId: session.userId,
+          userId: sessionToDelete.userId,
           title: "Session Deleted",
           message: `A session was deleted from your timesheet by admin`
         });

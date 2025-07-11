@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Bell, Edit } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useNotifications } from "@/hooks/use-notifications";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +12,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function NotificationBell() {
+  const { showNotification } = useNotifications();
+  const previousNotificationsRef = useRef<any[]>([]);
+  
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Show browser notification for new notifications
+  useEffect(() => {
+    if (notifications.length > 0 && previousNotificationsRef.current.length > 0) {
+      const newNotifications = notifications.filter(notification => 
+        !previousNotificationsRef.current.some(prev => prev.id === notification.id)
+      );
+      
+      newNotifications.forEach(notification => {
+        showNotification(notification.title, notification.message);
+      });
+    }
+    previousNotificationsRef.current = notifications;
+  }, [notifications, showNotification]);
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: number) => {

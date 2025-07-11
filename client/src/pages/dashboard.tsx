@@ -6,6 +6,7 @@ import { Clock, ChevronLeft, ChevronRight, Settings, LogOut } from "lucide-react
 import { Timer } from "@/components/timer";
 import { TimelineView } from "@/components/timeline-view";
 import { NotificationBell } from "@/components/notification-bell";
+import { NotificationPermissionBanner } from "@/components/notification-permission-banner";
 import { useLocation } from "wouter";
 
 export default function Dashboard() {
@@ -88,6 +89,9 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Notification Permission Banner */}
+        <NotificationPermissionBanner />
+        
         {/* Timer Section */}
         <div className="text-center mb-12">
           <div className="max-w-md mx-auto">
