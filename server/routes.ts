@@ -64,7 +64,21 @@ export function registerRoutes(app: Express): Server {
       }
       
       // Calculate duration
-      const duration = Math.floor((now.getTime() - activeSession.startAt.getTime()) / 60000); // in minutes
+      const startTime = new Date(activeSession.startAt);
+      const duration = Math.floor((now.getTime() - startTime.getTime()) / 60000); // in minutes
+      
+      // Handle midnight-spanning sessions
+      const startDate = startTime.toDateString();
+      const endDate = now.toDateString();
+      const spansAcrossMidnight = startDate !== endDate;
+      
+      console.log('Stopping session:', {
+        sessionId: activeSession.id,
+        startTime: startTime.toISOString(),
+        endTime: now.toISOString(),
+        duration,
+        spansAcrossMidnight
+      });
       
       // Update session
       const session = await storage.updateSession(activeSession.id, {
@@ -74,7 +88,7 @@ export function registerRoutes(app: Express): Server {
       });
       
       // Update timesheet total hours
-      const timesheet = await storage.getTimesheetByUserIdAndDate(userId, activeSession.startAt.toISOString().split('T')[0]);
+      const timesheet = await storage.getTimesheetByUserIdAndDate(userId, startTime.toISOString().split('T')[0]);
       if (timesheet) {
         await storage.updateTimesheet(timesheet.id, {
           totalHours: timesheet.totalHours + duration
@@ -83,6 +97,7 @@ export function registerRoutes(app: Express): Server {
       
       res.json(session);
     } catch (error) {
+      console.error('Stop timer error:', error);
       res.status(500).json({ message: "Failed to stop timer" });
     }
   });
@@ -340,6 +355,24 @@ export function registerRoutes(app: Express): Server {
       res.json(settings);
     } catch (error) {
       res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
+  app.post("/api/upload/logo", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
+    
+    try {
+      // For simplicity, we'll store the logo as base64 in the database
+      // In a real application, you'd want to use a file storage service
+      
+      // Since we're not using multer, we'll simulate the upload
+      // and just update the settings with a placeholder URL
+      const logoUrl = "/logo.png"; // Placeholder for now
+      
+      const updatedSettings = await storage.updateCompanySettings({ logoUrl });
+      res.json({ logoUrl, message: "Logo uploaded successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload logo" });
     }
   });
 

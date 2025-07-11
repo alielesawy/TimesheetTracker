@@ -221,75 +221,105 @@ export default function UserTimesheetEdit() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium text-slate-500">Date</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-500">Start Time</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-500">End Time</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-500">Duration</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map((session) => (
-                      <tr key={session.id} className="border-b hover:bg-slate-50">
-                        <td className="py-4 px-4">
-                          <div className="font-medium text-slate-800">
-                            {new Date(session.startAt).toLocaleDateString('en-US', {
-                              month: 'long',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+              <div className="space-y-3">
+                {sessions.map((session) => {
+                  const startDate = new Date(session.startAt);
+                  const endDate = session.endAt ? new Date(session.endAt) : null;
+                  
+                  // Check if session spans midnight
+                  const spansAcrossMidnight = endDate && startDate.toDateString() !== endDate.toDateString();
+                  
+                  return (
+                    <div key={session.id} className="bg-white border border-slate-200 rounded-xl p-6 hover:border-slate-300 transition-all hover:shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          {/* Status indicator */}
+                          <div className={`w-4 h-4 rounded-full ${
+                            session.isActive ? 'bg-green-500 animate-pulse' : 'bg-slate-300'
+                          }`}></div>
+                          
+                          {/* Session details */}
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h4 className="font-semibold text-slate-900">
+                                {startDate.toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </h4>
+                              {spansAcrossMidnight && (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+                                  Spans midnight
+                                </span>
+                              )}
+                              <Badge 
+                                variant={session.isActive ? "default" : "secondary"}
+                                className={session.isActive ? "bg-green-500" : ""}
+                              >
+                                {session.isActive ? 'Active' : 'Completed'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center space-x-6 text-sm text-slate-600">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-slate-500">Start:</span>
+                                <span className="font-medium">{formatTime(session.startAt)}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-slate-500">End:</span>
+                                <span className="font-medium">
+                                  {session.endAt ? formatTime(session.endAt) : 'Active'}
+                                </span>
+                                {spansAcrossMidnight && endDate && (
+                                  <span className="text-xs text-amber-600 ml-1">
+                                    ({endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-slate-500">Duration:</span>
+                                <span className="font-semibold text-slate-900">
+                                  {session.duration ? formatDuration(session.duration) : 'Running'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-sm text-slate-500">
-                            {new Date(session.startAt).toLocaleDateString('en-US', {
-                              weekday: 'long'
-                            })}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-slate-600">
-                          {formatTime(session.startAt)}
-                        </td>
-                        <td className="py-4 px-4 text-slate-600">
-                          {session.endAt ? formatTime(session.endAt) : 'Active'}
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge 
-                            variant={session.isActive ? "default" : "secondary"}
-                            className={session.isActive ? "bg-accent" : ""}
+                        </div>
+                        
+                        {/* Action buttons */}
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditSession(session)}
+                            className="hover:bg-blue-50 hover:border-blue-200"
                           >
-                            {session.duration ? formatDuration(session.duration) : 'Running'}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditSession(session)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleDeleteSession(session.id)}
-                              disabled={deleteSessionMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteSession(session.id)}
+                            disabled={deleteSessionMutation.isPending}
+                            className="hover:bg-red-50 hover:border-red-200 text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {sessions.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-slate-500">No sessions found for this user.</p>
+                  <div className="text-center py-12">
+                    <Clock className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No sessions found for this user</p>
+                    <p className="text-slate-400 text-sm mt-1">Sessions will appear here once the user starts tracking time</p>
                   </div>
                 )}
               </div>

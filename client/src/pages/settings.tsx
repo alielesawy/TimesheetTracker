@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Clock, Upload, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Settings() {
@@ -20,6 +20,9 @@ export default function Settings() {
     emailNotifications: true,
     inAppNotifications: true,
   });
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["/api/settings"],
@@ -53,7 +56,49 @@ export default function Settings() {
     },
   });
 
+  const handleLogoUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setLogoPreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append('logo', file);
+      const res = await fetch('/api/upload/logo', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      toast({
+        title: "Logo uploaded",
+        description: "Company logo has been updated successfully.",
+      });
+      setLogoFile(null);
+      setLogoPreview(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = () => {
+    if (logoFile) {
+      uploadLogoMutation.mutate(logoFile);
+    }
     updateSettingsMutation.mutate(formData);
   };
 
@@ -117,14 +162,33 @@ export default function Settings() {
               <div>
                 <Label>Company Logo</Label>
                 <div className="flex items-center space-x-4 mt-1">
-                  <div className="h-16 w-16 bg-primary rounded-lg flex items-center justify-center">
-                    <Clock className="text-white h-8 w-8" />
+                  <div className="h-16 w-16 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
+                    {logoPreview || settings?.logoUrl ? (
+                      <img 
+                        src={logoPreview || settings?.logoUrl} 
+                        alt="Company logo" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Clock className="text-white h-8 w-8" />
+                    )}
                   </div>
                   <div>
-                    <Button variant="outline">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadLogoMutation.isPending}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
-                      Upload Logo
+                      {uploadLogoMutation.isPending ? "Uploading..." : "Upload Logo"}
                     </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
                     <p className="text-sm text-slate-500 mt-1">PNG, JPG up to 2MB</p>
                   </div>
                 </div>

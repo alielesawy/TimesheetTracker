@@ -129,7 +129,79 @@ export default function Dashboard() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <TimelineView data={timesheetData} />
+              <div className="space-y-4">
+                <TimelineView data={timesheetData} />
+                
+                {/* Modern Session Cards */}
+                <div className="space-y-3 mt-6">
+                  {timesheetData?.sessions?.slice(0, 5).map((session) => {
+                    const startDate = new Date(session.startAt);
+                    const endDate = session.endAt ? new Date(session.endAt) : null;
+                    
+                    // Check if session spans midnight
+                    const spansAcrossMidnight = endDate && startDate.toDateString() !== endDate.toDateString();
+                    
+                    return (
+                      <div key={session.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {/* Status indicator */}
+                            <div className={`w-3 h-3 rounded-full ${
+                              session.isActive ? 'bg-green-500 animate-pulse' : 'bg-slate-300'
+                            }`}></div>
+                            
+                            {/* Session details */}
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium text-slate-900">
+                                  {startDate.toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  })}
+                                </span>
+                                {spansAcrossMidnight && (
+                                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                                    Spans midnight
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-slate-600 mt-1">
+                                {formatTime(session.startAt)} → {session.endAt ? formatTime(session.endAt) : 'Active'}
+                                {spansAcrossMidnight && endDate && (
+                                  <span className="ml-2 text-xs text-amber-600">
+                                    (ended {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Duration and status */}
+                          <div className="text-right">
+                            <div className="font-semibold text-slate-900">
+                              {session.duration ? formatDuration(session.duration) : 'Running'}
+                            </div>
+                            <div className={`text-xs mt-1 ${
+                              session.isActive ? 'text-green-600' : 'text-slate-500'
+                            }`}>
+                              {session.isActive ? 'In Progress' : 'Completed'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {(!timesheetData?.sessions || timesheetData.sessions.length === 0) && (
+                    <div className="text-center py-12">
+                      <Clock className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 font-medium">No sessions recorded yet</p>
+                      <p className="text-slate-400 text-sm mt-1">Start the timer above to begin tracking your time!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
