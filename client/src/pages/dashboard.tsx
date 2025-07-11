@@ -8,6 +8,7 @@ import { TimelineView } from "@/components/timeline-view";
 import { NotificationBell } from "@/components/notification-bell";
 import { NotificationPermissionBanner } from "@/components/notification-permission-banner";
 import { useLocation } from "wouter";
+import { formatDuration, formatTime } from "@/lib/utils";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();

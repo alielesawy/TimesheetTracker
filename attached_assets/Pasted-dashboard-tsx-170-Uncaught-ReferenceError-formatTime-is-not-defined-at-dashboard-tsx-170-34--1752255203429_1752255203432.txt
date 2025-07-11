@@ -1,0 +1,28 @@
+dashboard.tsx:170 Uncaught ReferenceError: formatTime is not defined
+    at dashboard.tsx:170:34
+    at Array.map (<anonymous>)
+    at Dashboard (dashboard.tsx:137:57)
+dashboard.tsx:170 Uncaught ReferenceError: formatTime is not defined
+    at dashboard.tsx:170:34
+    at Array.map (<anonymous>)
+    at Dashboard (dashboard.tsx:137:57)
+chunk-WERSD76P.js?v=f6cbc428:14032 The above error occurred in the <Dashboard> component:
+
+    at Dashboard (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.dev/src/pages/dashboard.tsx:30:36)
+    at Route (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f6cbc428:323:16)
+    at ProtectedRoute (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.dev/src/lib/protected-route.tsx:21:3)
+    at Switch (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f6cbc428:379:17)
+    at Router
+    at Provider (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.de…unner/workspace/node_modules/.vite/deps/chunk-MAE4WKEQ.js?v=f6cbc428:38:15)
+    at TooltipProvider (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.de…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f6cbc428:59:5)
+    at NotificationProvider (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.dev/src/hooks/use-notifications.tsx:21:40)
+    at AuthProvider (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at QueryClientProvider (https://df196c5e-8a17-4db8-883f-9cfb9a6ae245-00-rj2xdw357jng.kirk.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f6cbc428:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-WERSD76P.js?v=f6cbc428:9129 Uncaught ReferenceError: formatTime is not defined
+    at dashboard.tsx:170:34
+    at Array.map (<anonymous>)
+    at Dashboard (dashboard.tsx:137:57)
