@@ -9,6 +9,7 @@ import { SessionEditModal } from "@/components/session-edit-modal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
+import { Clock } from 'lucide-react';
 
 export default function UserTimesheetEdit() {
   const { user } = useAuth();

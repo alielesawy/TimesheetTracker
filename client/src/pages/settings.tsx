@@ -164,11 +164,11 @@ export default function Settings() {
                 <div className="flex items-center space-x-4 mt-1">
                   <div className="h-16 w-16 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
                     {logoPreview || settings?.logoUrl ? (
-                      <img 
-                        src={logoPreview || settings?.logoUrl} 
+                     <img 
+                        src={logoPreview || `${settings?.logoUrl}?v=${new Date().getTime()}`} 
                         alt="Company logo" 
                         className="w-full h-full object-cover"
-                      />
+/>
                     ) : (
                       <Clock className="text-white h-8 w-8" />
                     )}

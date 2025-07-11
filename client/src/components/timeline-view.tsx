@@ -1,4 +1,7 @@
 import { useMemo } from "react";
+import { formatDuration, formatTime, formatDate } from "@/lib/utils";
+import { Clock, CheckCircle, Hourglass } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface TimelineViewProps {
   data?: {
@@ -23,112 +26,71 @@ export function TimelineView({ data }: TimelineViewProps) {
       }
       acc[date].push(session);
       return acc;
-    }, {});
+    }, {} as Record<string, typeof data.sessions>);
   }, [data]);
-
-  const formatDuration = (minutes: number) => {
-    if (!minutes) return "0h 0m";
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  };
-
-  const getSessionPosition = (startTime: string) => {
-    const start = new Date(startTime);
-    const hours = start.getHours();
-    const minutes = start.getMinutes();
-    const totalMinutes = hours * 60 + minutes;
-    return (totalMinutes / (24 * 60)) * 100; // Convert to percentage of day
-  };
-
-  const getSessionWidth = (startTime: string, endTime: string | null, duration: number | null) => {
-    if (!endTime || !duration) return 2; // Minimum width for active sessions
-    const durationHours = duration / 60;
-    return (durationHours / 24) * 100; // Convert to percentage of day
-  };
 
   if (!data?.sessions || data.sessions.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-slate-500">No sessions recorded this month.</p>
+      <div className="text-center py-12">
+        <Clock className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+        <p className="text-slate-500 font-medium">No sessions recorded yet</p>
+        <p className="text-slate-400 text-sm mt-1">Start the timer above to begin tracking your time!</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {Object.entries(sessionsByDate)
         .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
         .map(([date, sessions]) => {
           const totalDuration = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
-          const dateObj = new Date(date);
 
           return (
-            <div key={date} className="timeline-row">
-              <div className="flex items-center justify-between mb-3">
+            <div key={date}>
+              {/* Date Header */}
+              <div className="flex items-center justify-between mb-4 pb-2 border-b">
                 <div className="flex items-center space-x-3">
-                  <div className="text-sm font-medium text-slate-800">
-                    {dateObj.toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {dateObj.toLocaleDateString('en-US', { weekday: 'long' })}
-                  </div>
+                  <h4 className="font-semibold text-lg text-slate-800">
+                    {formatDate(date)}
+                  </h4>
+                  <span className="text-sm text-slate-500">
+                    {new Date(date).toLocaleDateString('en-US', { weekday: 'long' })}
+                  </span>
                 </div>
-                <div className="text-sm font-medium text-slate-800">
+                <div className="font-bold text-slate-700 text-lg">
                   {formatDuration(totalDuration)}
                 </div>
               </div>
 
-              {/* Timeline Bar */}
-              <div className="relative">
-                {/* Background timeline (24 hours) */}
-                <div className="h-8 bg-slate-100 rounded-lg relative overflow-hidden">
-                  {/* Hour markers */}
-                  <div className="absolute inset-0 flex">
-                    {Array.from({ length: 24 }).map((_, hour) => (
-                      <div
-                        key={hour}
-                        className="flex-1 border-r border-slate-200 last:border-r-0"
-                      />
-                    ))}
-                  </div>
-
-                  {/* Work sessions */}
-                  <div className="absolute inset-0 flex items-center">
-                    {sessions.map((session, index) => {
-                      const left = getSessionPosition(session.startAt);
-                      const width = getSessionWidth(session.startAt, session.endAt, session.duration);
-                      const colors = ['bg-accent', 'bg-primary', 'bg-warning', 'bg-secondary'];
-                      const color = colors[index % colors.length];
-
-                      return (
-                        <div
-                          key={session.id}
-                          className={`absolute h-6 rounded flex items-center justify-center text-white text-xs font-medium ${color} ${session.isActive ? 'animate-pulse' : ''}`}
-                          style={{
-                            left: `${left}%`,
-                            width: `${Math.max(width, 2)}%`,
-                          }}
-                        >
-                          {session.duration ? formatDuration(session.duration) : 'Active'}
+              {/* Sessions List for the Day */}
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <div key={session.id} className="bg-white border border-slate-200 rounded-lg p-4 transition-colors hover:border-primary/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${session.isActive ? 'bg-green-100' : 'bg-slate-100'}`}>
+                          {session.isActive ? (
+                            <Hourglass className="h-5 w-5 text-green-600 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-5 w-5 text-slate-500" />
+                          )}
                         </div>
-                      );
-                    })}
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-800">
+                            {formatTime(session.startAt)} → {session.endAt ? formatTime(session.endAt) : 'Now'}
+                          </p>
+                          <p className="text-sm text-slate-500 mt-1">
+                            Duration: <span className="font-medium">{session.duration ? formatDuration(session.duration) : 'Running...'}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={session.isActive ? "default" : "secondary"} className={session.isActive ? "bg-green-600 hover:bg-green-700" : ""}>
+                        {session.isActive ? 'Active' : 'Completed'}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-
-                {/* Time labels */}
-                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                  <span>12 AM</span>
-                  <span>6 AM</span>
-                  <span>12 PM</span>
-                  <span>6 PM</span>
-                  <span>12 AM</span>
-                </div>
+                ))}
               </div>
             </div>
           );

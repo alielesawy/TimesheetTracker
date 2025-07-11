@@ -2,13 +2,29 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import multer from "multer"; // أضف هذا
+import path from "path"; // أضف هذا
+import fs from "fs"; // أضف هذا
 import { insertSessionSchema, insertNotificationSchema } from "@shared/schema";
 import { z } from "zod";
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication routes
   setupAuth(app);
+  const storageConfig = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = path.join(import.meta.dirname, "..", "public");
+      // تأكد من أن المجلد موجود
+      fs.mkdirSync(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      // استخدم اسم "logo" مع امتداد الملف الأصلي
+      cb(null, 'logo' + path.extname(file.originalname));
+    }
+  });
 
+  const upload = multer({ storage: storageConfig });
   // Timer routes
   app.post("/api/timer/start", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -358,20 +374,21 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/upload/logo", async (req, res) => {
+  app.post("/api/upload/logo", upload.single('logo'), async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
     
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded." });
+    }
+
     try {
-      // For simplicity, we'll store the logo as base64 in the database
-      // In a real application, you'd want to use a file storage service
+      const logoUrl = `/logo${path.extname(req.file.originalname)}`;
       
-      // Since we're not using multer, we'll simulate the upload
-      // and just update the settings with a placeholder URL
-      const logoUrl = "/logo.png"; // Placeholder for now
+      await storage.updateCompanySettings({ logoUrl });
       
-      const updatedSettings = await storage.updateCompanySettings({ logoUrl });
       res.json({ logoUrl, message: "Logo uploaded successfully" });
     } catch (error) {
+      console.error("Failed to upload logo:", error);
       res.status(500).json({ message: "Failed to upload logo" });
     }
   });
