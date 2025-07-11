@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./vite";
+// NOTE: We only import functions that are safe for production here.
+import { serveStatic, log } from "./vite"; 
 
 const app = express();
 app.use(express.json());
@@ -48,12 +49,11 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  if (app.get("env") === "development") {
-    // Dynamically import vite only in development
+  // This block ensures Vite is only ever referenced in development
+  if (process.env.NODE_ENV === "development") {
     const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
   } else {
-    // In production, just serve static files
     serveStatic(app);
   }
 
