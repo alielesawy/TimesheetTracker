@@ -62,14 +62,16 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-slate-800">{userName}</span>
               </div>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/settings")}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
+              {user.isStaff && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation("/settings")}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              )}
               
               <Button
                 variant="ghost"
