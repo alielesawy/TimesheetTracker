@@ -1,0 +1,188 @@
+Project Blueprint: A Modern Timesheet Application
+1.0 Project Vision & Core Philosophy
+1.1 Vision
+The primary goal is to develop a minimalist, modern, and highly usable web application for time tracking. The application will serve individual users or small teams, allowing them to track work hours effortlessly. It will feature two distinct roles: a Standard User for time logging and an Admin for user management and oversight. The final product must be production-ready and deployable on Heroku.
+
+1.2 UI/UX Guiding Principles: "Focus & Flow"
+The user experience is paramount. The design should follow the "Focus & Flow" philosophy:
+
+Focus: The interface must be clean, uncluttered, and intuitive, minimizing cognitive load. The most critical action at any given moment (e.g., the timer) should be the central, most prominent element on the screen. Distractions should be eliminated.
+
+Flow: The application should visualize the passage of time and work sessions in a way that feels dynamic and rewarding. Instead of a static, boring table, the data should be presented as a "timeline" of the user's day, creating a sense of progress and accomplishment.
+
+Key UI Concept 1: The Interactive Central Timer. The main user dashboard should feature a large, central status indicator.
+
+Idle State: A prominent "Start" button.
+
+Active State: It transforms into a live, running timer, possibly with a circular progress indicator. The button itself toggles to "Stop".
+
+Key UI Concept 2: The Timeline View. The timesheet should represent each day as a horizontal timeline, with work sessions rendered as colored blocks on that timeline. This provides an immediate visual understanding of the workday's pattern, including breaks and session lengths.
+
+2.0 Detailed Feature Specification
+2.1 Standard User Role
+
+Authentication:
+
+Sign Up: Users must register using First Name, Last Name, Email, and Password.
+
+Login: Users must log in with their Email and Password.
+
+Dashboard & Time Tracking:
+
+The primary user view is a dashboard displaying the timesheet for the current calendar month.
+
+The dashboard contains a master "Start/Stop" toggle button.
+
+Clicking "Start" captures the current client-side timestamp and begins a new Session. If this is the first session of the day, a new Row for that date is created in the timesheet.
+
+Clicking "Stop" captures the current client-side timestamp, ends the active Session, and calculates its duration.
+
+Data Display:
+
+The user's timesheet is read-only.
+
+Each day (row) calculates and displays the total hours worked for that day.
+
+The bottom of the timesheet shows a grand total of hours worked for the month.
+
+Interface & Notifications:
+
+A notification icon will display alerts from the admin (e.g., "Your session on July 15th was edited.").
+
+The company name and logo (set by the admin) are displayed.
+
+A "Logout" function must be available.
+
+2.2 Admin User Role
+
+Authentication & Access:
+
+The admin logs in via the same login page but must be identified as an admin (is_staff flag in the database).
+
+Upon login, the admin is redirected to a dedicated admin dashboard.
+
+Admin Dashboard:
+
+The dashboard displays a list of all registered users.
+
+Each user in the list shows key summary data, such as Name, Email, and Total Hours Logged This Month.
+
+Timesheet Management (Full CRUD):
+
+The admin can select any user to view their detailed timesheet.
+
+The admin can edit the start_at and end_at times for any existing session of any user. Edits must be made via a user-friendly time-picker modal.
+
+The admin can manually add a new session for any user.
+
+The admin can delete a session from a user's timesheet.
+
+Automated Notifications:
+
+Any edit, creation, or deletion of a session by the admin must automatically generate a Notification for the affected user.
+
+Global Configuration & Data Export:
+
+The admin has a settings area to update the company name and upload/change the company logo.
+
+The admin can export any user's monthly timesheet as an Excel (.xlsx) file.
+
+3.0 Recommended Technology Stack
+Backend: Python, Django, Django REST Framework (DRF), djangorestframework-simplejwt.
+
+Frontend: React.js, Axios, React Router DOM.
+
+Database: SQLite (for local development), PostgreSQL (for production).
+
+Deployment: Heroku.
+
+4.0 Phased Development Plan
+This project should be built iteratively. Each phase should result in a testable piece of functionality.
+
+Phase 1: Project Foundation & Backend Authentication
+
+Goal: A secure backend with fully functional user registration and login APIs.
+
+Tasks:
+
+Initialize the Django project (backend) and the React project (frontend).
+
+In Django, create two apps: users and tracker.
+
+Define all database models: CustomUser (in users), and TimeSheet, Session, Notification (in tracker).
+
+Create two serializers in users/serializers.py: a UserCreateSerializer (which includes the password field as write_only) and a UserDetailSerializer (which excludes the password field, for safely returning user data).
+
+Build and test the API endpoints:
+
+POST /api/users/register/ (using UserCreateSerializer).
+
+POST /api/token/ (using Simple JWT's TokenObtainPairView).
+
+GET /api/users/me/ (a protected endpoint using UserDetailSerializer to get the logged-in user's data).
+
+Set up all necessary configurations in settings.py (AUTH_USER_MODEL, REST_FRAMEWORK, CORS_HEADERS).
+
+Phase 2: Frontend Authentication & Routing
+
+Goal: A fully functional login/logout system in React where the application is aware of the user's role.
+
+Tasks:
+
+Build a robust, simple AuthContext to manage user state (user, authToken, loading).
+
+Build the Login page. It will handle the API calls to /token/ and /me/, update the AuthContext, and then navigate.
+
+Build the Register page and connect it to the /register/ API.
+
+Implement protected routing: a PrivateRoute component for standard users and an AdminRoute component that checks user.is_staff.
+
+Implement the main application router in App.js to direct users to the correct dashboard upon login.
+
+Phase 3: Core User Experience - Time Tracking
+
+Goal: Allow a standard user to log in, track their time, and see the results.
+
+Tasks:
+
+Backend: Implement and test the APIs for starting a session, stopping a session, and fetching the current month's timesheet data.
+
+Frontend: Build the Dashboard.js component.
+
+Implement the interactive "Start/Stop" timer UI.
+
+Connect the timer to the backend APIs.
+
+Fetch the monthly timesheet data and render it using the "Timeline View" design.
+
+Phase 4: Admin Power & Control
+
+Goal: Build all features for the Admin role.
+
+Tasks:
+
+Backend: Implement all admin-only APIs (list all users, update/add/delete sessions for any user). Secure these with a permission class that checks for is_staff.
+
+Frontend: Build the AdminDashboard.js page to list users.
+
+Frontend: Create a dynamic route (/admin/user/:id) to display a specific user's timesheet.
+
+Frontend: Implement the editing functionality, including a modal with a time-picker component.
+
+Full-Stack: Implement the notification system (backend logic to create a notification on edit, and a frontend component to poll and display them).
+
+Phase 5: Final Features & Deployment
+
+Goal: A feature-complete application ready for production.
+
+Tasks:
+
+Implement the remaining features: Forgot Password, Company Branding management, and Excel Export.
+
+Conduct a full UI/UX polish based on the "Focus & Flow" principles.
+
+Configure the project for production (PostgreSQL, static files, environment variables).
+
+Write deployment scripts and instructions for Heroku.
+
+Deploy and test in a production environment
