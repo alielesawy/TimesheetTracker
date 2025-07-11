@@ -20,7 +20,7 @@ export default function Dashboard() {
     queryKey: ["/api/settings"],
   });
 
-  if (!user) return null;
+  if (!user) return <div></div>;
 
   const handleLogout = async () => {
     try {

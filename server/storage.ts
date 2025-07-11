@@ -37,11 +37,11 @@ export interface IStorage {
   getCompanySettings(): Promise<CompanySettings>;
   updateCompanySettings(settings: Partial<CompanySettings>): Promise<CompanySettings>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: InstanceType<typeof PostgresSessionStore>;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: InstanceType<typeof PostgresSessionStore>;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -73,21 +73,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTimesheetsByUserId(userId: number, month?: string): Promise<Timesheet[]> {
-    let query = db.select().from(timesheets).where(eq(timesheets.userId, userId));
-    
     if (month) {
       const startDate = `${month}-01`;
       const endDate = `${month}-31`;
-      query = query.where(
-        and(
-          eq(timesheets.userId, userId),
-          gte(timesheets.date, startDate),
-          lte(timesheets.date, endDate)
+      return await db
+        .select()
+        .from(timesheets)
+        .where(
+          and(
+            eq(timesheets.userId, userId),
+            gte(timesheets.date, startDate),
+            lte(timesheets.date, endDate)
+          )
         )
-      );
+        .orderBy(desc(timesheets.date));
     }
     
-    return await query.orderBy(desc(timesheets.date));
+    return await db
+      .select()
+      .from(timesheets)
+      .where(eq(timesheets.userId, userId))
+      .orderBy(desc(timesheets.date));
   }
 
   async getTimesheetByUserIdAndDate(userId: number, date: string): Promise<Timesheet | undefined> {
@@ -124,22 +130,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSessionsByUserId(userId: number, month?: string): Promise<Session[]> {
-    let query = db.select().from(sessions).where(eq(sessions.userId, userId));
-    
     if (month) {
       const startDate = new Date(`${month}-01`);
       const endDate = new Date(`${month}-31`);
       endDate.setMonth(endDate.getMonth() + 1);
-      query = query.where(
-        and(
-          eq(sessions.userId, userId),
-          gte(sessions.startAt, startDate),
-          lte(sessions.startAt, endDate)
+      return await db
+        .select()
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.userId, userId),
+            gte(sessions.startAt, startDate),
+            lte(sessions.startAt, endDate)
+          )
         )
-      );
+        .orderBy(desc(sessions.startAt));
     }
     
-    return await query.orderBy(desc(sessions.startAt));
+    return await db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.startAt));
   }
 
   async getActiveSessionByUserId(userId: number): Promise<Session | undefined> {

@@ -25,7 +25,7 @@ export default function UserTimesheetEdit() {
 
   if (!user?.isStaff) {
     setLocation("/");
-    return null;
+    return <div></div>;
   }
 
   const selectedUser = users.find(u => u.id === parseInt(id));

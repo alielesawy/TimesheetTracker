@@ -17,7 +17,7 @@ export default function AdminDashboard() {
 
   if (!user?.isStaff) {
     setLocation("/");
-    return null;
+    return <div></div>;
   }
 
   const handleLogout = async () => {
