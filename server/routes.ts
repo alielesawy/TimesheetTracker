@@ -217,6 +217,8 @@ export function registerRoutes(app: Express): Server {
       const sessionId = parseInt(req.params.id);
       const sessionData = req.body;
       
+      console.log('Updating session:', sessionId, sessionData);
+      
       const session = await storage.updateSession(sessionId, sessionData);
       
       // Create notification
@@ -228,7 +230,8 @@ export function registerRoutes(app: Express): Server {
       
       res.json(session);
     } catch (error) {
-      res.status(500).json({ message: "Failed to update session" });
+      console.error('Session update error:', error);
+      res.status(500).json({ message: "Failed to update session", error: error.message });
     }
   });
 

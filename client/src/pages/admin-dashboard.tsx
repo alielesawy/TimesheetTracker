@@ -33,34 +33,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleExport = () => {
-    // Create CSV content
-    const headers = ['Name', 'Email', 'Role', 'Status', 'Created Date'];
-    const rows = users.map(user => [
-      `${user.firstName} ${user.lastName}`,
-      user.email,
-      user.isStaff ? 'Admin' : 'User',
-      'Active',
-      new Date(user.createdAt).toLocaleDateString()
-    ]);
-    
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-    
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -176,10 +149,6 @@ export default function AdminDashboard() {
                       className="pl-10"
                     />
                   </div>
-                  <Button onClick={handleExport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
                 </div>
               </div>
             </div>

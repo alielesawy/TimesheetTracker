@@ -176,6 +176,11 @@ export class DatabaseStorage implements IStorage {
       .set(updateSession)
       .where(eq(sessions.id, id))
       .returning();
+    
+    if (!session) {
+      throw new Error(`Session with id ${id} not found`);
+    }
+    
     return session;
   }
 

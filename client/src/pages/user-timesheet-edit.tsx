@@ -49,6 +49,35 @@ export default function UserTimesheetEdit() {
     setIsModalOpen(true);
   };
 
+  const handleExport = () => {
+    // Create CSV content for user's sessions
+    const headers = ['Date', 'Start Time', 'End Time', 'Duration', 'Status'];
+    const rows = sessions.map(session => [
+      new Date(session.startAt).toLocaleDateString(),
+      new Date(session.startAt).toLocaleTimeString(),
+      session.endAt ? new Date(session.endAt).toLocaleTimeString() : 'Active',
+      formatDuration(session.duration),
+      session.isActive ? 'Active' : 'Completed'
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${userName.replace(' ', '_')}_timesheet_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const userInitials = `${selectedUser.firstName[0]}${selectedUser.lastName[0]}`;
   const userName = `${selectedUser.firstName} ${selectedUser.lastName}`;
 
@@ -107,7 +136,7 @@ export default function UserTimesheetEdit() {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Session
               </Button>
-              <Button>
+              <Button onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
