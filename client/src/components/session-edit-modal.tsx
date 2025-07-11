@@ -36,20 +36,29 @@ export function SessionEditModal({ isOpen, onClose, session }: SessionEditModalP
 
   const updateSessionMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await apiRequest("PUT", `/api/admin/session/${session.id}`, data);
-      return await res.json();
+      if (session.id) {
+        // Update existing session
+        const res = await apiRequest("PUT", `/api/admin/session/${session.id}`, data);
+        return await res.json();
+      } else {
+        // Create new session
+        const res = await apiRequest("POST", `/api/admin/session`, data);
+        return await res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/user"] });
       toast({
-        title: "Session updated",
-        description: "The session has been updated successfully.",
+        title: session.id ? "Session updated" : "Session created",
+        description: session.id 
+          ? "The session has been updated successfully." 
+          : "The session has been created successfully.",
       });
       onClose();
     },
     onError: (error) => {
       toast({
-        title: "Update failed",
+        title: session.id ? "Update failed" : "Creation failed",
         description: error.message,
         variant: "destructive",
       });
@@ -80,12 +89,20 @@ export function SessionEditModal({ isOpen, onClose, session }: SessionEditModalP
 
     const duration = Math.floor((endAt.getTime() - startAt.getTime()) / 60000);
 
-    updateSessionMutation.mutate({
+    const sessionData = {
       startAt: startAt.toISOString(),
       endAt: endAt.toISOString(),
       duration,
       isActive: false,
-    });
+    };
+
+    // If creating new session, add required fields
+    if (!session.id) {
+      sessionData.userId = session.userId;
+      sessionData.timesheetId = session.timesheetId;
+    }
+
+    updateSessionMutation.mutate(sessionData);
   };
 
   const calculateDuration = () => {
@@ -107,7 +124,7 @@ export function SessionEditModal({ isOpen, onClose, session }: SessionEditModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Session</DialogTitle>
+          <DialogTitle>{session?.id ? "Edit Session" : "Add Session"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -154,7 +171,7 @@ export function SessionEditModal({ isOpen, onClose, session }: SessionEditModalP
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={updateSessionMutation.isPending}>
-              Save Changes
+              {session?.id ? "Save Changes" : "Create Session"}
             </Button>
           </div>
         </div>

@@ -190,23 +190,34 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
     
     try {
-      const sessionData = insertSessionSchema.parse(req.body);
-      const session = await storage.createSession(sessionData);
+      const sessionData = req.body;
+      
+      // Convert ISO strings to Date objects and validate
+      const createData = {
+        ...sessionData,
+        startAt: sessionData.startAt ? new Date(sessionData.startAt) : new Date(),
+        endAt: sessionData.endAt ? new Date(sessionData.endAt) : null,
+        userId: parseInt(sessionData.userId),
+        timesheetId: parseInt(sessionData.timesheetId),
+        duration: sessionData.duration || 0,
+        isActive: sessionData.isActive || false,
+      };
+      
+      console.log('Creating session:', createData);
+      
+      const session = await storage.createSession(createData);
       
       // Create notification
       await storage.createNotification({
-        userId: sessionData.userId,
+        userId: createData.userId,
         title: "Session Added",
         message: `A new session was added to your timesheet by admin`
       });
       
       res.json(session);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create session" });
-      }
+      console.error('Session create error:', error);
+      res.status(500).json({ message: "Failed to create session", error: error.message });
     }
   });
 
@@ -217,9 +228,16 @@ export function registerRoutes(app: Express): Server {
       const sessionId = parseInt(req.params.id);
       const sessionData = req.body;
       
-      console.log('Updating session:', sessionId, sessionData);
+      // Convert ISO strings to Date objects
+      const updateData = {
+        ...sessionData,
+        startAt: sessionData.startAt ? new Date(sessionData.startAt) : undefined,
+        endAt: sessionData.endAt ? new Date(sessionData.endAt) : undefined,
+      };
       
-      const session = await storage.updateSession(sessionId, sessionData);
+      console.log('Updating session:', sessionId, updateData);
+      
+      const session = await storage.updateSession(sessionId, updateData);
       
       // Create notification
       await storage.createNotification({
@@ -254,20 +272,25 @@ export function registerRoutes(app: Express): Server {
         }
       }
       
+      if (!sessionToDelete) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      console.log('Deleting session:', sessionId, sessionToDelete);
+      
       await storage.deleteSession(sessionId);
       
-      if (sessionToDelete) {
-        // Create notification
-        await storage.createNotification({
-          userId: sessionToDelete.userId,
-          title: "Session Deleted",
-          message: `A session was deleted from your timesheet by admin`
-        });
-      }
+      // Create notification
+      await storage.createNotification({
+        userId: sessionToDelete.userId,
+        title: "Session Deleted",
+        message: `A session was deleted from your timesheet by admin`
+      });
       
       res.sendStatus(204);
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete session" });
+      console.error('Session delete error:', error);
+      res.status(500).json({ message: "Failed to delete session", error: error.message });
     }
   });
 

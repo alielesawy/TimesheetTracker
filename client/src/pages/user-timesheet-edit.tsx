@@ -1,11 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Download, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { SessionEditModal } from "@/components/session-edit-modal";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 
 export default function UserTimesheetEdit() {
@@ -14,6 +16,8 @@ export default function UserTimesheetEdit() {
   const [, setLocation] = useLocation();
   const [selectedSession, setSelectedSession] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["/api/admin/user", id, "sessions"],
@@ -47,6 +51,50 @@ export default function UserTimesheetEdit() {
   const handleEditSession = (session) => {
     setSelectedSession(session);
     setIsModalOpen(true);
+  };
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      await apiRequest("DELETE", `/api/admin/session/${sessionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/user", id, "sessions"] });
+      toast({
+        title: "Session deleted",
+        description: "The session has been deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteSession = (sessionId: number) => {
+    if (confirm("Are you sure you want to delete this session?")) {
+      deleteSessionMutation.mutate(sessionId);
+    }
+  };
+
+  const handleAddSession = async () => {
+    // Create a default session for the current date
+    const now = new Date();
+    const endTime = new Date(now.getTime() + 60 * 60 * 1000); // Default 1 hour session
+    
+    const defaultSession = {
+      id: null,
+      startAt: now.toISOString(),
+      endAt: endTime.toISOString(),
+      duration: 60,
+      isActive: false,
+      userId: parseInt(id),
+      timesheetId: 1, // Default timesheet ID - we'll create one if needed
+    };
+    setSelectedSession(defaultSession);
+    setIsAddModalOpen(true);
   };
 
   const handleExport = () => {
@@ -132,7 +180,7 @@ export default function UserTimesheetEdit() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleAddSession}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Session
               </Button>
@@ -224,7 +272,12 @@ export default function UserTimesheetEdit() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteSession(session.id)}
+                              disabled={deleteSessionMutation.isPending}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -257,8 +310,11 @@ export default function UserTimesheetEdit() {
 
       {/* Session Edit Modal */}
       <SessionEditModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isModalOpen || isAddModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setIsAddModalOpen(false);
+        }}
         session={selectedSession}
       />
     </div>
