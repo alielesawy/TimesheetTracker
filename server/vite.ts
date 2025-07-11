@@ -4,7 +4,6 @@ import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
-import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
 
@@ -40,25 +39,25 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // Use Vite's middleware to handle JS, CSS, and other assets.
   app.use(vite.middlewares);
+
+  // This "catch-all" route is essential. It serves the main index.html file
+  // for any request that isn't an API call or a static asset.
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
+      // 1. Read index.html
+      const template = await fs.promises.readFile(
+        path.resolve(import.meta.dirname, "..", "client", "index.html"),
+        "utf-8",
       );
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
+      // 2. Let Vite transform the HTML to inject its scripts
       const page = await vite.transformIndexHtml(url, template);
+
+      // 3. Send the transformed HTML to the browser
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
