@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express, { type Request, Response, NextFunction } from "express";
 import http from "http";
 import { registerRoutes } from "./routes";
@@ -6,14 +6,13 @@ import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import { fileURLToPath } from 'url';
 
-// ADD LOGGING TO DEBUG THE PATHS
 const __filename = fileURLToPath(import.meta.url);
-console.log(`[DEBUG] import.meta.url: ${import.meta.url}`);
-console.log(`[DEBUG] __filename: ${__filename}`);
 const __dirname = path.dirname(__filename);
-console.log(`[DEBUG] __dirname: ${__dirname}`);
 
-
+// Explicitly configure dotenv with a path relative to this file.
+// This is more robust than relying on the side-effect import.
+// In both dev (`/server`) and prod (`/dist`), this resolves to the project root.
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app = express();
 app.use(express.json());
@@ -59,16 +58,14 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.error(err); // It's good practice to log the full error
+    console.error(err);
     res.status(status).json({ message });
   });
 
   if (process.env.NODE_ENV === "development") {
-    // In dev mode, __dirname is the 'server' directory. We need the project root.
     const projectRoot = path.resolve(__dirname, '..');
     await setupVite(app, server, projectRoot);
   } else {
-    // In production, __dirname is the 'dist' directory. Pass this to serveStatic.
     serveStatic(app, __dirname);
   }
 
