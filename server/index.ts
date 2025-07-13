@@ -1,18 +1,31 @@
+import path from "path";
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+
+// --- CONFIGURATION FIRST ---
+// It is crucial to define paths and load environment variables before importing
+// any other application modules that might depend on them.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configure dotenv to load variables from the .env file in the project root.
+const dotenvResult = dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
+// Optional: Add a check to see if the .env file was loaded successfully in production.
+if (dotenvResult.error && process.env.NODE_ENV === 'production') {
+    console.error("Error loading .env file", dotenvResult.error);
+    // In a real production scenario, you might want to exit if the config is missing.
+    // process.exit(1);
+}
+
+
+// --- THEN IMPORT APPLICATION MODULES ---
+// Now that environment variables are loaded, we can safely import other modules.
 import express, { type Request, Response, NextFunction } from "express";
 import http from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import path from "path";
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Explicitly configure dotenv with a path relative to this file.
-// This is more robust than relying on the side-effect import.
-// In both dev (`/server`) and prod (`/dist`), this resolves to the project root.
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const app = express();
 app.use(express.json());
