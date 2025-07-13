@@ -1,17 +1,11 @@
-import "./config"; // MUST BE THE VERY FIRST IMPORT.
+import { CWD, PROJECT_ROOT } from "./config";
 
 import express, { type Request, Response, NextFunction } from "express";
 import http from "http";
-import path from "path";
-import { fileURLToPath } from 'url';
 
 // Now that the environment is configured, we can safely import other modules.
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-
-// Define paths again for use within this file's scope.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -51,7 +45,6 @@ app.use((req, res, next) => {
 (async () => {
   const server = http.createServer(app);
 
-  // We can now use a static import again, as the config is loaded.
   await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -63,10 +56,11 @@ app.use((req, res, next) => {
   });
 
   if (process.env.NODE_ENV === "development") {
-    const projectRoot = path.resolve(__dirname, '..');
-    await setupVite(app, server, projectRoot);
+    // Use the imported PROJECT_ROOT for Vite setup
+    await setupVite(app, server, PROJECT_ROOT);
   } else {
-    serveStatic(app, __dirname);
+    // Use the imported CWD (current working directory of the script, i.e., /dist)
+    serveStatic(app, CWD);
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
