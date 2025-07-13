@@ -1,13 +1,35 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Play, Square } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// Declare Tone.js as a global variable to satisfy TypeScript
+declare const Tone: any;
+
 export function Timer() {
   const { toast } = useToast();
   const [elapsedTime, setElapsedTime] = useState(0);
+  
+  // --- START: Sound Effect Logic ---
+  const synth = useRef<any>(null);
+
+  // Initialize the synthesizer once
+  useEffect(() => {
+    if (typeof Tone !== 'undefined') {
+      synth.current = new Tone.Synth().toDestination();
+    }
+  }, []);
+
+  const playSound = async (note: string) => {
+    if (synth.current) {
+      // Start audio context on user interaction
+      await Tone.start();
+      synth.current.triggerAttackRelease(note, "8n");
+    }
+  };
+  // --- END: Sound Effect Logic ---
 
   const { data: timerStatus, isLoading } = useQuery({
     queryKey: ["/api/timer/status"],
@@ -16,6 +38,7 @@ export function Timer() {
 
   const startTimerMutation = useMutation({
     mutationFn: async () => {
+      await playSound("C4"); // Play start sound
       const res = await apiRequest("POST", "/api/timer/start");
       return await res.json();
     },
@@ -27,7 +50,7 @@ export function Timer() {
         description: "Your work session has begun.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Failed to start timer",
         description: error.message,
@@ -38,6 +61,7 @@ export function Timer() {
 
   const stopTimerMutation = useMutation({
     mutationFn: async () => {
+      await playSound("G4"); // Play stop sound
       const res = await apiRequest("POST", "/api/timer/stop");
       return await res.json();
     },
@@ -50,7 +74,7 @@ export function Timer() {
         description: "Your work session has been recorded.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Failed to stop timer",
         description: error.message,
@@ -101,7 +125,6 @@ export function Timer() {
   return (
     <div className="relative">
       {!timerStatus?.isActive ? (
-        /* Idle State */
         <div className="flex flex-col items-center">
           <Button
             onClick={handleStart}
@@ -116,10 +139,8 @@ export function Timer() {
           </Button>
         </div>
       ) : (
-        /* Active State */
         <div className="flex flex-col items-center">
           <div className="relative w-32 h-32">
-            {/* Circular Progress Ring */}
             <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 128 128">
               <circle
                 cx="64"
@@ -143,8 +164,6 @@ export function Timer() {
                 className="text-accent transition-all duration-1000 ease-linear"
               />
             </svg>
-
-            {/* Timer Button */}
             <div className="absolute inset-0 flex items-center justify-center">
               <Button
                 onClick={handleStop}
@@ -159,8 +178,6 @@ export function Timer() {
               </Button>
             </div>
           </div>
-
-          {/* Running Timer Display */}
           <div className="mt-4 text-center">
             <div className="text-3xl font-bold text-slate-800">
               {formatTime(elapsedTime)}
@@ -169,8 +186,6 @@ export function Timer() {
           </div>
         </div>
       )}
-
-      {/* Current Session Info */}
       {timerStatus?.isActive && timerStatus?.session && (
         <div className="mt-6 p-4 bg-slate-100 rounded-lg">
           <p className="text-sm text-slate-600">

@@ -21,6 +21,7 @@ export interface IStorage {
   updateTimesheet(id: number, timesheet: Partial<Timesheet>): Promise<Timesheet>;
   
   // Session management
+  getSession(id: number): Promise<Session | undefined>; // --- الدالة الجديدة ---
   getSessionsByTimesheetId(timesheetId: number): Promise<Session[]>;
   getSessionsByUserId(userId: number, month?: string): Promise<Session[]>;
   getActiveSessionByUserId(userId: number): Promise<Session | undefined>;
@@ -49,6 +50,13 @@ export class DatabaseStorage implements IStorage {
       createTableIfMissing: true 
     });
   }
+
+  // --- START: تنفيذ الدالة الجديدة ---
+  async getSession(id: number): Promise<Session | undefined> {
+    const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
+    return session;
+  }
+  // --- END: تنفيذ الدالة الجديدة ---
 
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -214,7 +222,6 @@ export class DatabaseStorage implements IStorage {
   async getCompanySettings(): Promise<CompanySettings> {
     const [settings] = await db.select().from(companySettings);
     if (!settings) {
-      // Create default settings if none exist
       const [newSettings] = await db
         .insert(companySettings)
         .values({})

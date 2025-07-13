@@ -2,11 +2,31 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import multer from "multer"; // أضف هذا
-import path from "path"; // أضف هذا
-import fs from "fs"; // أضف هذا
-import { insertSessionSchema, insertNotificationSchema } from "@shared/schema";
-import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// --- START: إضافة دالة مساعدة لتنسيق الوقت ---
+const formatTimeForNotification = (date: Date | null | undefined) => {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+// --- END: إضافة دالة مساعدة لتنسيق الوقت ---
+
+// --- START: إضافة دالة مساعدة لإعادة حساب الإجمالي اليومي ---
+async function recalculateDailyTotal(userId: number, date: string) {
+    const timesheet = await storage.getTimesheetByUserIdAndDate(userId, date);
+    if (timesheet) {
+        const sessionsForDay = await storage.getSessionsByTimesheetId(timesheet.id);
+        const newTotalHours = sessionsForDay.reduce((sum, s) => sum + (s.duration || 0), 0);
+        await storage.updateTimesheet(timesheet.id, { totalHours: newTotalHours });
+    }
+}
+// --- END: إضافة دالة مساعدة لإعادة حساب الإجمالي اليومي ---
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication routes
@@ -14,12 +34,10 @@ export function registerRoutes(app: Express): Server {
   const storageConfig = multer.diskStorage({
     destination: (req, file, cb) => {
       const uploadPath = path.join(import.meta.dirname, "..", "public");
-      // تأكد من أن المجلد موجود
       fs.mkdirSync(uploadPath, { recursive: true });
       cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
-      // استخدم اسم "logo" مع امتداد الملف الأصلي
       cb(null, 'logo' + path.extname(file.originalname));
     }
   });
@@ -34,13 +52,11 @@ export function registerRoutes(app: Express): Server {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       
-      // Check if there's already an active session
       const activeSession = await storage.getActiveSessionByUserId(userId);
       if (activeSession) {
         return res.status(400).json({ message: "A session is already active" });
       }
       
-      // Get or create timesheet for today
       let timesheet = await storage.getTimesheetByUserIdAndDate(userId, today);
       if (!timesheet) {
         timesheet = await storage.createTimesheet({
@@ -50,7 +66,6 @@ export function registerRoutes(app: Express): Server {
         });
       }
       
-      // Create new session
       const session = await storage.createSession({
         timesheetId: timesheet.id,
         userId,
@@ -73,43 +88,21 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user.id;
       const now = new Date();
       
-      // Find active session
       const activeSession = await storage.getActiveSessionByUserId(userId);
       if (!activeSession) {
         return res.status(400).json({ message: "No active session found" });
       }
       
-      // Calculate duration
       const startTime = new Date(activeSession.startAt);
-      const duration = Math.floor((now.getTime() - startTime.getTime()) / 60000); // in minutes
+      const duration = Math.floor((now.getTime() - startTime.getTime()) / 60000);
       
-      // Handle midnight-spanning sessions
-      const startDate = startTime.toDateString();
-      const endDate = now.toDateString();
-      const spansAcrossMidnight = startDate !== endDate;
-      
-      console.log('Stopping session:', {
-        sessionId: activeSession.id,
-        startTime: startTime.toISOString(),
-        endTime: now.toISOString(),
-        duration,
-        spansAcrossMidnight
-      });
-      
-      // Update session
       const session = await storage.updateSession(activeSession.id, {
         endAt: now,
         duration,
         isActive: false
       });
       
-      // Update timesheet total hours
-      const timesheet = await storage.getTimesheetByUserIdAndDate(userId, startTime.toISOString().split('T')[0]);
-      if (timesheet) {
-        await storage.updateTimesheet(timesheet.id, {
-          totalHours: timesheet.totalHours + duration
-        });
-      }
+      await recalculateDailyTotal(userId, startTime.toISOString().split('T')[0]);
       
       res.json(session);
     } catch (error) {
@@ -171,29 +164,22 @@ export function registerRoutes(app: Express): Server {
     
     try {
       const users = await storage.getAllUsers();
-      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+      const currentMonth = new Date().toISOString().slice(0, 7);
       
-      // Get all active sessions
-      const allActiveSessions = [];
-      for (const user of users) {
-        const activeSession = await storage.getActiveSessionByUserId(user.id);
-        if (activeSession) {
-          allActiveSessions.push(activeSession);
-        }
-      }
+      const activeSessionsPromises = users.map(user => storage.getActiveSessionByUserId(user.id));
+      const allActiveSessions = (await Promise.all(activeSessionsPromises)).filter(Boolean);
       
-      // Get monthly hours for all users
       let totalMonthlyHours = 0;
-      for (const user of users) {
+      const monthlyHoursPromises = users.map(async (user) => {
         const sessions = await storage.getSessionsByUserId(user.id, currentMonth);
-        const userHours = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
-        totalMonthlyHours += userHours;
-      }
+        return sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
+      });
+      totalMonthlyHours = (await Promise.all(monthlyHoursPromises)).reduce((sum, hours) => sum + hours, 0);
       
       const stats = {
         totalUsers: users.length,
         activeSessions: allActiveSessions.length,
-        monthlyHours: Math.round(totalMonthlyHours / 60), // Convert minutes to hours
+        monthlyHours: Math.round(totalMonthlyHours / 60),
         avgHours: users.length > 0 ? Math.round(totalMonthlyHours / 60 / users.length) : 0,
       };
       
@@ -222,108 +208,126 @@ export function registerRoutes(app: Express): Server {
     
     try {
       const sessionData = req.body;
+      const userId = parseInt(sessionData.userId);
+      const startAt = new Date(sessionData.startAt);
+      const date = startAt.toISOString().split('T')[0];
+
+      // --- START: إصلاح مشكلة إنشاء الجلسة ---
+      let timesheet = await storage.getTimesheetByUserIdAndDate(userId, date);
+      if (!timesheet) {
+          timesheet = await storage.createTimesheet({ userId, date, totalHours: 0 });
+      }
       
-      // Convert ISO strings to Date objects and validate
       const createData = {
         ...sessionData,
-        startAt: sessionData.startAt ? new Date(sessionData.startAt) : new Date(),
+        startAt: startAt,
         endAt: sessionData.endAt ? new Date(sessionData.endAt) : null,
-        userId: parseInt(sessionData.userId),
-        timesheetId: parseInt(sessionData.timesheetId),
-        duration: sessionData.duration || 0,
-        isActive: sessionData.isActive || false,
-        modifiedByAdmin: true, // Always true for admin-created sessions
+        userId: userId,
+        timesheetId: timesheet.id, // استخدام الـ ID الصحيح
+        modifiedByAdmin: true,
       };
-      
-      console.log('Creating session:', createData);
+      // --- END: إصلاح مشكلة إنشاء الجلسة ---
       
       const session = await storage.createSession(createData);
       
-      // Create notification
+      await recalculateDailyTotal(userId, date);
+      
+      // --- START: تعديل رسالة الإشعار ---
+      const sessionDate = new Date(session.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const startTime = formatTimeForNotification(session.startAt);
+      const endTime = formatTimeForNotification(session.endAt);
       await storage.createNotification({
         userId: createData.userId,
         title: "Session Added",
-        message: `A new session was added to your timesheet by admin`
+        message: `Admin ${req.user.firstName} added a session for you on ${sessionDate} from ${startTime} to ${endTime}.`
       });
+      // --- END: تعديل رسالة الإشعار ---
       
       res.json(session);
     } catch (error) {
       console.error('Session create error:', error);
-      res.status(500).json({ message: "Failed to create session", error: error.message });
+      res.status(500).json({ message: "Failed to create session", error: (error as Error).message });
     }
   });
 
   app.put("/api/admin/session/:id", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
-    
     try {
       const sessionId = parseInt(req.params.id);
       const sessionData = req.body;
-      
-      // Convert ISO strings to Date objects
+
+      const oldSession = await storage.getSession(sessionId);
+      if (!oldSession) {
+        return res.status(404).json({ message: "Session not found." });
+      }
+
       const updateData = {
         ...sessionData,
-        startAt: sessionData.startAt ? new Date(sessionData.startAt) : undefined,
+        startAt: new Date(sessionData.startAt),
         endAt: sessionData.endAt ? new Date(sessionData.endAt) : undefined,
         modifiedByAdmin: true,
       };
       
-      console.log('Updating session:', sessionId, updateData);
+      const updatedSession = await storage.updateSession(sessionId, updateData);
       
-      const session = await storage.updateSession(sessionId, updateData);
+      await recalculateDailyTotal(updatedSession.userId, new Date(updatedSession.startAt).toISOString().split('T')[0]);
       
-      // Create notification
+      const changes = [];
+      if (formatTimeForNotification(oldSession.startAt) !== formatTimeForNotification(updatedSession.startAt)) {
+        changes.push(`start time from ${formatTimeForNotification(oldSession.startAt)} to ${formatTimeForNotification(updatedSession.startAt)}`);
+      }
+      if (formatTimeForNotification(oldSession.endAt) !== formatTimeForNotification(updatedSession.endAt)) {
+        changes.push(`end time from ${formatTimeForNotification(oldSession.endAt)} to ${formatTimeForNotification(updatedSession.endAt)}`);
+      }
+      
+      const sessionDate = new Date(updatedSession.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const message = changes.length > 0
+        ? `Admin ${req.user.firstName} updated your session on ${sessionDate}: changed ${changes.join(' and ')}.`
+        : `Admin ${req.user.firstName} updated your session on ${sessionDate}.`;
+
       await storage.createNotification({
-        userId: session.userId,
+        userId: updatedSession.userId,
         title: "Session Updated",
-        message: `Your session has been updated by admin`
+        message: message,
       });
-      
-      res.json(session);
+
+      res.json(updatedSession);
     } catch (error) {
       console.error('Session update error:', error);
-      res.status(500).json({ message: "Failed to update session", error: error.message });
+      res.status(500).json({ message: "Failed to update session", error: (error as Error).message });
     }
   });
 
   app.delete("/api/admin/session/:id", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isStaff) return res.sendStatus(403);
-    
     try {
       const sessionId = parseInt(req.params.id);
-      
-      // Get session data first to find the user ID
-      const allUsers = await storage.getAllUsers();
-      let sessionToDelete = null;
-      
-      for (const user of allUsers) {
-        const userSessions = await storage.getSessionsByUserId(user.id);
-        const session = userSessions.find(s => s.id === sessionId);
-        if (session) {
-          sessionToDelete = session;
-          break;
-        }
-      }
-      
+      const sessionToDelete = await storage.getSession(sessionId);
       if (!sessionToDelete) {
-        return res.status(404).json({ message: "Session not found" });
+        return res.status(404).json({ message: "Session not found." });
       }
       
-      console.log('Deleting session:', sessionId, sessionToDelete);
+      const date = new Date(sessionToDelete.startAt).toISOString().split('T')[0];
+      const userId = sessionToDelete.userId;
       
       await storage.deleteSession(sessionId);
       
-      // Create notification
+      await recalculateDailyTotal(userId, date);
+
+      const sessionDate = new Date(sessionToDelete.startAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const startTime = formatTimeForNotification(sessionToDelete.startAt);
+      const endTime = formatTimeForNotification(sessionToDelete.endAt);
+
       await storage.createNotification({
         userId: sessionToDelete.userId,
         title: "Session Deleted",
-        message: `A session was deleted from your timesheet by admin`
+        message: `Admin ${req.user.firstName} deleted your session from ${sessionDate} (${startTime} - ${endTime}).`
       });
-      
+
       res.sendStatus(204);
     } catch (error) {
       console.error('Session delete error:', error);
-      res.status(500).json({ message: "Failed to delete session", error: error.message });
+      res.status(500).json({ message: "Failed to delete session", error: (error as Error).message });
     }
   });
 
