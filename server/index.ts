@@ -1,31 +1,21 @@
 import path from "path";
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import express, { type Request, Response, NextFunction } from "express";
+import http from "http";
+// DO NOT import modules that use environment variables here.
 
 // --- CONFIGURATION FIRST ---
-// It is crucial to define paths and load environment variables before importing
-// any other application modules that might depend on them.
+// Define paths and load environment variables immediately.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configure dotenv to load variables from the .env file in the project root.
-const dotenvResult = dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
-// Optional: Add a check to see if the .env file was loaded successfully in production.
-if (dotenvResult.error && process.env.NODE_ENV === 'production') {
-    console.error("Error loading .env file", dotenvResult.error);
-    // In a real production scenario, you might want to exit if the config is missing.
-    // process.exit(1);
-}
-
-
-// --- THEN IMPORT APPLICATION MODULES ---
-// Now that environment variables are loaded, we can safely import other modules.
-import express, { type Request, Response, NextFunction } from "express";
-import http from "http";
-import { registerRoutes } from "./routes";
+// --- THEN SETUP AND RUN THE APP ---
+// We can now safely import other modules that might depend on the environment.
 import { setupVite, serveStatic, log } from "./vite";
-
 
 const app = express();
 app.use(express.json());
@@ -62,9 +52,12 @@ app.use((req, res, next) => {
   next();
 });
 
-
 (async () => {
   const server = http.createServer(app);
+
+  // DYNAMICALLY import routes only after dotenv has run.
+  // This is the key fix to prevent the race condition.
+  const { registerRoutes } = await import("./routes");
   await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
