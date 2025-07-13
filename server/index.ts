@@ -1,4 +1,4 @@
-import { CWD, PROJECT_ROOT } from "./config";
+import { config } from "./config";
 
 import express, { type Request, Response, NextFunction } from "express";
 import http from "http";
@@ -56,11 +56,11 @@ app.use((req, res, next) => {
   });
 
   if (process.env.NODE_ENV === "development") {
-    // Use the imported PROJECT_ROOT for Vite setup
-    await setupVite(app, server, PROJECT_ROOT);
+    // Use the imported config object's properties
+    await setupVite(app, server, config.PROJECT_ROOT);
   } else {
-    // Use the imported CWD (current working directory of the script, i.e., /dist)
-    serveStatic(app, CWD);
+    // Use the imported config object's properties
+    serveStatic(app, config.CWD);
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
