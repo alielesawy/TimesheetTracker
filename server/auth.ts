@@ -45,11 +45,14 @@ export function setupAuth(app: Express) {
     new LocalStrategy(
       { usernameField: 'email' },
       async (email, password, done) => {
-        const user = await storage.getUserByEmail(email);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
+        try {
+          const user = await storage.getUserByEmail(email);
+          if (!user || !(await comparePasswords(password, user.password))) {
+            return done(null, false, { message: 'Incorrect email or password.' });
+          }
           return done(null, user);
+        } catch (err) {
+            return done(err);
         }
       }
     ),
@@ -57,26 +60,35 @@ export function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
-  });
-
-  app.post("/api/register", async (req, res, next) => {
-    const existingUser = await storage.getUserByEmail(req.body.email);
-    if (existingUser) {
-      return res.status(400).send("Email already exists");
+    try {
+        const user = await storage.getUser(id);
+        done(null, user);
+    } catch (err) {
+        done(err);
     }
-
-    const user = await storage.createUser({
-      ...req.body,
-      password: await hashPassword(req.body.password),
-    });
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
   });
+
+  // --- START: تعديل هام لحل مشكلة تداخل الجلسات ---
+  app.post("/api/register", async (req, res, next) => {
+    try {
+        const existingUser = await storage.getUserByEmail(req.body.email);
+        if (existingUser) {
+            return res.status(400).send("Email already exists");
+        }
+
+        const user = await storage.createUser({
+            ...req.body,
+            password: await hashPassword(req.body.password),
+        });
+
+        // Do NOT log the user in automatically.
+        // Just send back the created user data.
+        res.status(201).json(user);
+    } catch(err) {
+        next(err);
+    }
+  });
+  // --- END: تعديل هام لحل مشكلة تداخل الجلسات ---
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     res.status(200).json(req.user);
@@ -85,7 +97,11 @@ export function setupAuth(app: Express) {
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      req.session.destroy((err) => {
+          if (err) return next(err);
+          res.clearCookie('connect.sid'); // The default session cookie name
+          res.sendStatus(200);
+      });
     });
   });
 

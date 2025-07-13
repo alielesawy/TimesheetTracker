@@ -55,14 +55,9 @@ export default function AuthPage() {
     },
   });
 
-  // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      if (user.isStaff) {
-        setLocation("/admin");
-      } else {
-        setLocation("/");
-      }
+      setLocation(user.isStaff ? "/admin" : "/");
     }
   }, [user, setLocation]);
 
@@ -77,6 +72,7 @@ export default function AuthPage() {
     }
   };
 
+  // --- START: تعديل منطق التسجيل ---
   const onRegisterSubmit = async (data: RegisterForm) => {
     try {
       await registerMutation.mutateAsync({
@@ -84,12 +80,15 @@ export default function AuthPage() {
         lastName: data.lastName,
         email: data.email,
         password: data.password,
-        isStaff: false,
       });
+      // On success, reset the form and switch to the login view
+      registerForm.reset();
+      setIsLogin(true);
     } catch (error) {
       console.error("Registration failed:", error);
     }
   };
+  // --- END: تعديل منطق التسجيل ---
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -118,6 +117,7 @@ export default function AuthPage() {
                   <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="Enter your email"
                     {...loginForm.register("email")}
                   />
@@ -133,6 +133,7 @@ export default function AuthPage() {
                   <Input
                     id="password"
                     type="password"
+                    autoComplete="current-password"
                     placeholder="Enter your password"
                     {...loginForm.register("password")}
                   />
@@ -151,12 +152,6 @@ export default function AuthPage() {
                     Remember me
                   </Label>
                 </div>
-                <button
-                  type="button"
-                  className="text-sm text-primary hover:text-primary/80"
-                >
-                  Forgot password?
-                </button>
               </div>
 
               <Button
@@ -185,12 +180,12 @@ export default function AuthPage() {
             </form>
           ) : (
             <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="mt-8 space-y-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
+                      autoComplete="given-name"
                       placeholder="First name"
                       {...registerForm.register("firstName")}
                     />
@@ -204,6 +199,7 @@ export default function AuthPage() {
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
+                      autoComplete="family-name"
                       placeholder="Last name"
                       {...registerForm.register("lastName")}
                     />
@@ -220,6 +216,7 @@ export default function AuthPage() {
                   <Input
                     id="regEmail"
                     type="email"
+                    autoComplete="email"
                     placeholder="Enter your email"
                     {...registerForm.register("email")}
                   />
@@ -235,6 +232,7 @@ export default function AuthPage() {
                   <Input
                     id="regPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Create a password"
                     {...registerForm.register("password")}
                   />
@@ -250,6 +248,7 @@ export default function AuthPage() {
                   <Input
                     id="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="Confirm your password"
                     {...registerForm.register("confirmPassword")}
                   />
@@ -259,7 +258,6 @@ export default function AuthPage() {
                     </p>
                   )}
                 </div>
-              </div>
 
               <Button
                 type="submit"
@@ -288,8 +286,6 @@ export default function AuthPage() {
           )}
         </div>
       </div>
-
-      {/* Right side - Hero */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary/10 to-accent/10 items-center justify-center p-12">
         <div className="max-w-md text-center">
           <div className="mx-auto h-24 w-24 bg-primary rounded-full flex items-center justify-center mb-6">
@@ -302,12 +298,6 @@ export default function AuthPage() {
             Streamline your workflow with our intuitive time tracking system. 
             Focus on what matters while we handle the rest.
           </p>
-          <div className="space-y-2 text-sm text-slate-500">
-            <p>✓ Interactive timer interface</p>
-            <p>✓ Visual timeline view</p>
-            <p>✓ Admin management tools</p>
-            <p>✓ Detailed reporting</p>
-          </div>
         </div>
       </div>
     </div>
