@@ -6,10 +6,14 @@ import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import { fileURLToPath } from 'url';
 
-// Define __dirname ONCE in the main entry file.
-// After bundling, this will correctly point to the 'dist' directory.
+// ADD LOGGING TO DEBUG THE PATHS
 const __filename = fileURLToPath(import.meta.url);
+console.log(`[DEBUG] import.meta.url: ${import.meta.url}`);
+console.log(`[DEBUG] __filename: ${__filename}`);
 const __dirname = path.dirname(__filename);
+console.log(`[DEBUG] __dirname: ${__dirname}`);
+
+
 
 const app = express();
 app.use(express.json());
