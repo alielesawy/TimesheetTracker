@@ -1,21 +1,17 @@
-import path from "path";
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+import "./config"; // MUST BE THE VERY FIRST IMPORT.
+
 import express, { type Request, Response, NextFunction } from "express";
 import http from "http";
-// DO NOT import modules that use environment variables here.
+import path from "path";
+import { fileURLToPath } from 'url';
 
-// --- CONFIGURATION FIRST ---
-// Define paths and load environment variables immediately.
+// Now that the environment is configured, we can safely import other modules.
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+
+// Define paths again for use within this file's scope.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Configure dotenv to load variables from the .env file in the project root.
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
-
-// --- THEN SETUP AND RUN THE APP ---
-// We can now safely import other modules that might depend on the environment.
-import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
@@ -55,9 +51,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = http.createServer(app);
 
-  // DYNAMICALLY import routes only after dotenv has run.
-  // This is the key fix to prevent the race condition.
-  const { registerRoutes } = await import("./routes");
+  // We can now use a static import again, as the config is loaded.
   await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
