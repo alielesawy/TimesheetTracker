@@ -29,6 +29,7 @@ export const sessions = pgTable("sessions", {
   endAt: timestamp("end_at"),
   duration: integer("duration"), // in minutes
   isActive: boolean("is_active").default(false).notNull(),
+  modifiedByAdmin: boolean("modified_by_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

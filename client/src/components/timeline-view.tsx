@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatDuration, formatTime, formatDate } from "@/lib/utils";
-import { Clock, CheckCircle, Hourglass } from "lucide-react";
+import { Clock, CheckCircle, Hourglass, Pencil } from "lucide-react"; // استيراد أيقونة القلم
 import { Badge } from "@/components/ui/badge";
 
 interface TimelineViewProps {
@@ -11,6 +11,7 @@ interface TimelineViewProps {
       endAt: string | null;
       duration: number | null;
       isActive: boolean;
+      modifiedByAdmin?: boolean; // إضافة الحقل الجديد
     }>;
   };
 }
@@ -65,16 +66,16 @@ export function TimelineView({ data }: TimelineViewProps) {
 
               {/* Sessions List for the Day */}
               <div className="space-y-3">
-                {sessions.map((session) => (
+                {sessions
+                  .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()) // ترتيب الجلسات لضمان ترقيم صحيح
+                  .map((session, index) => ( // إضافة index للترقيم
                   <div key={session.id} className="bg-white border border-slate-200 rounded-lg p-4 transition-colors hover:border-primary/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${session.isActive ? 'bg-green-100' : 'bg-slate-100'}`}>
-                          {session.isActive ? (
-                            <Hourglass className="h-5 w-5 text-green-600 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-5 w-5 text-slate-500" />
-                          )}
+                          {/* --- START: تعديل لترقيم الجلسات --- */}
+                          <span className="font-bold text-slate-500">{index + 1}</span>
+                          {/* --- END: تعديل لترقيم الجلسات --- */}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-slate-800">
@@ -85,9 +86,19 @@ export function TimelineView({ data }: TimelineViewProps) {
                           </p>
                         </div>
                       </div>
-                      <Badge variant={session.isActive ? "default" : "secondary"} className={session.isActive ? "bg-green-600 hover:bg-green-700" : ""}>
-                        {session.isActive ? 'Active' : 'Completed'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {/* --- START: إضافة علامة تعديل الأدمن --- */}
+                        {session.modifiedByAdmin && (
+                          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Edited by Admin
+                          </Badge>
+                        )}
+                        {/* --- END: إضافة علامة تعديل الأدمن --- */}
+                        <Badge variant={session.isActive ? "default" : "secondary"} className={session.isActive ? "bg-green-600 hover:bg-green-700" : ""}>
+                          {session.isActive ? 'Active' : 'Completed'}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 ))}

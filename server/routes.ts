@@ -232,6 +232,7 @@ export function registerRoutes(app: Express): Server {
         timesheetId: parseInt(sessionData.timesheetId),
         duration: sessionData.duration || 0,
         isActive: sessionData.isActive || false,
+        modifiedByAdmin: true, // Always true for admin-created sessions
       };
       
       console.log('Creating session:', createData);
@@ -264,6 +265,7 @@ export function registerRoutes(app: Express): Server {
         ...sessionData,
         startAt: sessionData.startAt ? new Date(sessionData.startAt) : undefined,
         endAt: sessionData.endAt ? new Date(sessionData.endAt) : undefined,
+        modifiedByAdmin: true,
       };
       
       console.log('Updating session:', sessionId, updateData);
