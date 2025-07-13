@@ -4,6 +4,10 @@ import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const viteLogger = createLogger();
 
@@ -39,25 +43,19 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  // Use Vite's middleware to handle JS, CSS, and other assets.
   app.use(vite.middlewares);
 
-  // This "catch-all" route is essential. It serves the main index.html file
-  // for any request that isn't an API call or a static asset.
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
-      // 1. Read index.html
+      // In dev mode, __dirname is /server, so we go up one level to find /client
       const template = await fs.promises.readFile(
-        path.resolve(import.meta.dirname, "..", "client", "index.html"),
+        path.resolve(__dirname, "..", "client", "index.html"),
         "utf-8",
       );
 
-      // 2. Let Vite transform the HTML to inject its scripts
       const page = await vite.transformIndexHtml(url, template);
-
-      // 3. Send the transformed HTML to the browser
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -67,7 +65,8 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // In production, this code is bundled into dist/. The public assets are in a sibling folder `public`.
+  const distPath = path.resolve(__dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -77,7 +76,6 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
